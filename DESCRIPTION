@@ -1,0 +1,48 @@
+Package: ClustVarSelect
+Type: Package
+Title: Robust Feature Selection via Power K-means and Bregman Divergences
+Version: 1.0.0
+Date: 2024-12-05
+Authors@R: c(
+    person("Zhiyuan", "Yu", 
+           email = "zyyu@umich.edu", 
+           role = "aut"),
+    person("Wenxuan", "Zhu", 
+           email = "zhuwx@umich.edu", 
+           role = c("aut", "cre")),
+    person("Adrian", "Con Garcia", 
+           email = "acong@umich.edu", 
+           role = "aut"))
+Description: A comprehensive toolkit for feature selection in high-dimensional data, especially scRNA-Seq data, using
+    sparse manifold decomposition (SMD) with power k-means clustering. The package implements
+    multiple Bregman divergences for flexible distance metrics, supports both entropy-based
+    (decision trees) and maximum margin (SVM) classification approaches, and includes
+    various dimension reduction methods (PCA, spectral). Specifically designed for handling
+    complex biological data, it supports various input types including sparse matrices,
+    SingleCellExperiment, and Seurat objects, making it particularly suitable for
+    single-cell RNA sequencing data analysis.
+License: MIT + file LICENSE
+URL: https://github.com/wx-zhu/ClustVarSelect
+Depends:
+    R (>= 4.1.0)
+Imports:
+    graphics,
+    irlba,
+    matrixStats,
+    penalizedSVM,
+    rpart,
+    Seurat,
+    SeuratObject,
+    stats,
+    SummarizedExperiment
+Suggests:
+    covr,
+    knitr,
+    rmarkdown,
+    testthat (>= 3.0.0)
+Config/testthat/edition: 3
+Encoding: UTF-8
+LazyData: true
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.2
+VignetteBuilder: knitr
