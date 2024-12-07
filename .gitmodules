@@ -1,0 +1,6 @@
+[submodule "bregman_power_kmeans"]
+	path = bregman_power_kmeans
+	url = https://github.com/avellal14/bregman_power_kmeans.git
+[submodule "SMD"]
+	path = SMD
+	url = https://github.com/smelton/SMD.git
