@@ -10,7 +10,7 @@
 #' @importFrom stats rnorm
 #' 
 #' @param X Input data: matrix, sparse matrix (dgCMatrix), SingleCellExperiment, or Seurat object
-#' @param s Initial power parameter for weights calculation
+#' @param s Initial power parameter for weights calculation. Must be negative (e.g., -0.5)
 #' @param k Number of clusters
 #' @param npcs Number of principal components for dimension reduction. Default: min(50, ncol(X))
 #' @param eta Learning rate for power parameter updates. Default: 1.05
@@ -81,6 +81,9 @@ power_kmeans_bregman <- function(
   }
   if (!is.numeric(npcs) || npcs < 1 || is.na(npcs)) {
     stop("'npcs' must be a positive integer")
+  }
+  if (!is.numeric(s) || s >= 0) {
+    stop("Parameter 's' must be negative")
   }
   
   # Data type using switch: matrix, sparse matrix, SingleCellExperiment, and Seurat
