@@ -4,10 +4,13 @@
 #' Performs sparse manifold decomposition using power k-means clustering with Bregman
 #' divergence for robust feature importance analysis in high-dimensional data, especially
 #' for scRNA-seq data. Features are normalized before analysis and importance scores can
-#' be standardized relative to shuffled data.
-#'
+#' be standardized relative to shuffled data. The function implements efficient parallel 
+#' processing to accelerate computation across multiple CPU cores, making it suitable for 
+#' large-scale analyses.
+#' 
+#' @importFrom parallel mclapply detectCores
+#' @importFrom stats median predict quantile rnorm sd as.formula dist hclust cutree
 #' @importFrom graphics hist
-#' @importFrom stats median predict quantile rnorm sd
 #' @importFrom utils head
 #' @importFrom irlba irlba
 #' @importFrom matrixStats colMins colSds
@@ -27,7 +30,9 @@
 #' @param seed Random seed for reproducibility. Default: 1
 #' @param max_iter Maximum number of iterations for power k-means. Default: 1000
 #' @param dim_reduction Dimension reduction method: "pca", "spectral", or "none". Default: "pca"
-#'
+#' @param n_cores Number of CPU cores to use for parallel processing. Set to 1 for sequential processing. 
+#'        Default: min(detectCores() - 1, 2). Higher values can significantly improve performance on 
+#'        Unix-like systems.
 #'
 #' @details
 #' The function implements sparse manifold decomposition (SMD) combining power k-means clustering
@@ -35,6 +40,29 @@
 #' discovering discriminating features in high-dimensional biological data. For entropy-based
 #' classification, it uses decision trees (rpart). For maxmargin classification, it uses
 #' L1-penalized SVM.
+#'
+#' Parallel Processing:
+#' The function employs parallel processing to distribute computational workload across multiple
+#' CPU cores using the 'parallel' package. The parallelization strategy includes:
+#' \itemize{
+#'   \item Parallel execution of clustering trials
+#'   \item Parallel computation of shuffled data for z-score standardization
+#'   \item Automatic core detection and allocation
+#' }
+#'
+#' The parallel implementation uses mclapply for efficient multicore processing on Unix-like
+#' systems (Linux, macOS). On Windows systems, parallel processing automatically defaults to
+#' sequential processing due to platform limitations. For reproducibility, the random seed is
+#' carefully managed across parallel processes.
+#'
+#' @return A ClustVarSelect object containing:
+#' \itemize{
+#'   \item scores: Vector of feature importance scores
+#'   \item k_guess: Number of clusters used
+#'   \item prop_algo: Clustering algorithm used
+#'   \item class_algo: Classification algorithm used
+#'   \item params: List of parameters used including trials, n_sub, and other settings
+#' }
 #'
 #' @references
 #' Melton, S., & Ramanathan, S. (2021). Discovering a sparse set of pairwise
@@ -51,15 +79,19 @@
 #' set.seed(123)
 #' X <- matrix(rnorm(1000), ncol = 20)
 #'
-#' # Basic usage
+#' # Basic usage with default parallel processing (Unix/Mac only)
 #' result <- SMD(X, k_guess = 3)
 #'
-#' # With custom parameters
+#' # Specify number of cores for parallel processing (Unix/Mac only)
+#' result <- SMD(X, k_guess = 3, n_cores = 4)
+#'
+#' # With custom parameters 
 #' result <- SMD(X,
 #'   k_guess = 3,
 #'   prop_algo = "kmeans",
-#'   divergence = "kl",
-#'   dim_reduction = "spectral"
+#'   divergence = "euclidean",
+#'   dim_reduction = "pca",
+#'   n_cores = 2  # (Unix/Mac only)
 #' )
 #'
 #' @export
@@ -77,11 +109,12 @@ SMD <- function(X,
                 convergence_threshold = 5,
                 seed = 1,
                 max_iter = 1000,
-                dim_reduction = "pca") {
+                dim_reduction = "pca", 
+                n_cores = NULL) {
   # Get dimensions
   N <- nrow(X)
   D <- ncol(X)
-
+  
   # Input validation
   if (k_guess < 1) {
     stop("k_guess must be positive")
@@ -101,26 +134,35 @@ SMD <- function(X,
   if (!is.null(trials) && (!is.numeric(trials) || trials < 1 || is.na(trials))) {
     stop("'trials' must be NULL or a positive integer")
   }
-
-  # Set default parameters
-  if (is.null(n_sub)) n_sub <- as.integer(N * 0.8)
-  if (is.null(trials)) trials <- as.integer(2 * D)
-  if (is.null(cluster_prior_min)) cluster_prior_min <- 3
-
-  # Normalize X
-  X <- scale(X, center = FALSE, scale = apply(X, 2, sd))
-
-  # Validate algorithms
   if (!prop_algo %in% c("agglo", "kmeans")) {
     stop(paste(prop_algo, "is not a supported clustering algorithm."))
   }
   if (!class_algo %in% c("entropy", "maxmargin")) {
     stop(paste(class_algo, "is not a supported classifier."))
   }
-
+  
+  # Set default parameters
+  if (is.null(n_sub)) n_sub <- as.integer(N * 0.8)
+  if (is.null(trials)) trials <- as.integer(2 * D)
+  if (is.null(cluster_prior_min)) cluster_prior_min <- 3
+  if (is.null(n_cores)) {
+    n_cores <- min(parallel::detectCores() - 1, 2)  # Conservative default
+  } else {
+    # Ensure n_cores doesn't exceed system limits or reasonable bounds
+    max_cores <- min(parallel::detectCores(), 2)
+    if (n_cores > max_cores) {
+      warning(sprintf("Requested %d cores exceeds limit. Using %d cores instead.", 
+                      n_cores, max_cores))
+      n_cores <- max_cores
+    }
+  }
+  
+  # Normalize X
+  X <- scale(X, center = FALSE, scale = apply(X, 2, sd))
+  
   # Set cluster range
   cluster_prior <- c(cluster_prior_min, as.integer(2 * k_guess))
-
+  
   # Create power kmeans parameters list
   pkm_params <- list(
     eta = eta,
@@ -131,7 +173,7 @@ SMD <- function(X,
     max_iter = max_iter,
     dim_reduction = dim_reduction
   )
-
+  
   # Choose classifier function based on class_algo
   classifier_func <- if (class_algo == "entropy") {
     function(X, n_sub, cluster_prior, prop_algo) {
@@ -142,26 +184,51 @@ SMD <- function(X,
       find_classifier_dims_maxmargin(X, n_sub, cluster_prior, prop_algo, pkm_params)
     }
   }
-
+  
+  # Split trials into chunks for parallel processing
+  trial_chunks <- split(1:trials, cut(1:trials, n_cores, labels = FALSE))
+  
+  # Parallel processing function for chunks
+  process_chunk <- function(chunk_trials) {
+    unlist(lapply(chunk_trials, function(trial) {
+      set.seed(seed + trial)
+      classifier_func(X, n_sub, cluster_prior, prop_algo)
+    }))
+  }
+  
   # Collect counts
-  counts <- unlist(lapply(1:trials, function(trial) {
-    classifier_func(X, n_sub, cluster_prior, prop_algo)
-  }))
-
+  counts <- unlist(parallel::mclapply(trial_chunks, 
+                                      process_chunk, 
+                                      mc.cores = n_cores))
+  
   # Calculate histogram of counts
   gd <- hist(counts, breaks = seq(0, D), plot = FALSE)$density
-
+  
   if (z_score) {
+    set.seed(seed)
     X_shuffled <- shuffle_data(X)
-    counts_shuffled <- unlist(lapply(1:trials, function(trial) {
-      classifier_func(X_shuffled, n_sub, cluster_prior, prop_algo)
-    }))
+    
+    if (n_cores > 1) {
+      counts_shuffled <- unlist(parallel::mclapply(
+        trial_chunks,
+        function(chunk) {
+          process_chunk(chunk)
+        },
+        mc.cores = n_cores
+      ))
+    } else {
+      counts_shuffled <- unlist(lapply(1:trials, function(trial) {
+        set.seed(seed + trial)
+        classifier_func(X_shuffled, n_sub, cluster_prior, prop_algo)
+      }))
+    }
+    
     g_shuffled <- hist(counts_shuffled, breaks = seq(0, D), plot = FALSE)$density
     scores <- (gd - mean(g_shuffled)) / sd(g_shuffled)
   } else {
     scores <- gd
   }
-
+  
   # Create and return ClustVarSelect object
   create_clustvarselect(
     scores = scores,
@@ -178,7 +245,6 @@ SMD <- function(X,
     )
   )
 }
-
 
 
 

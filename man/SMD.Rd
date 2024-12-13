@@ -19,7 +19,8 @@ SMD(
   convergence_threshold = 5,
   seed = 1,
   max_iter = 1000,
-  dim_reduction = "pca"
+  dim_reduction = "pca",
+  n_cores = NULL
 )
 }
 \arguments{
@@ -52,12 +53,28 @@ SMD(
 \item{max_iter}{Maximum number of iterations for power k-means. Default: 1000}
 
 \item{dim_reduction}{Dimension reduction method: "pca", "spectral", or "none". Default: "pca"}
+
+\item{n_cores}{Number of CPU cores to use for parallel processing. Set to 1 for sequential processing.
+Default: min(detectCores() - 1, 2). Higher values can significantly improve performance on
+Unix-like systems.}
+}
+\value{
+A ClustVarSelect object containing:
+\itemize{
+\item scores: Vector of feature importance scores
+\item k_guess: Number of clusters used
+\item prop_algo: Clustering algorithm used
+\item class_algo: Classification algorithm used
+\item params: List of parameters used including trials, n_sub, and other settings
+}
 }
 \description{
 Performs sparse manifold decomposition using power k-means clustering with Bregman
 divergence for robust feature importance analysis in high-dimensional data, especially
 for scRNA-seq data. Features are normalized before analysis and importance scores can
-be standardized relative to shuffled data.
+be standardized relative to shuffled data. The function implements efficient parallel
+processing to accelerate computation across multiple CPU cores, making it suitable for
+large-scale analyses.
 }
 \details{
 The function implements sparse manifold decomposition (SMD) combining power k-means clustering
@@ -65,21 +82,39 @@ with Bregman divergence for robust clustering. This method is particularly effec
 discovering discriminating features in high-dimensional biological data. For entropy-based
 classification, it uses decision trees (rpart). For maxmargin classification, it uses
 L1-penalized SVM.
+
+Parallel Processing:
+The function employs parallel processing to distribute computational workload across multiple
+CPU cores using the 'parallel' package. The parallelization strategy includes:
+\itemize{
+\item Parallel execution of clustering trials
+\item Parallel computation of shuffled data for z-score standardization
+\item Automatic core detection and allocation
+}
+
+The parallel implementation uses mclapply for efficient multicore processing on Unix-like
+systems (Linux, macOS). On Windows systems, parallel processing automatically defaults to
+sequential processing due to platform limitations. For reproducibility, the random seed is
+carefully managed across parallel processes.
 }
 \examples{
 # Generate example data
 set.seed(123)
 X <- matrix(rnorm(1000), ncol = 20)
 
-# Basic usage
+# Basic usage with default parallel processing (Unix/Mac only)
 result <- SMD(X, k_guess = 3)
 
-# With custom parameters
+# Specify number of cores for parallel processing (Unix/Mac only)
+result <- SMD(X, k_guess = 3, n_cores = 4)
+
+# With custom parameters 
 result <- SMD(X,
   k_guess = 3,
   prop_algo = "kmeans",
-  divergence = "kl",
-  dim_reduction = "spectral"
+  divergence = "euclidean",
+  dim_reduction = "pca",
+  n_cores = 2  # (Unix/Mac only)
 )
 
 }
