@@ -244,6 +244,7 @@ shuffle_data <- function(X) {
 #'   dim_reduction = "pca"
 #' )
 #' dims <- find_classifier_dims_entropy(X, 80, c(3, 6), "kmeans", pkm_params)
+#' @export
 find_classifier_dims_entropy <- function(X, cell_sample, k_sub, cluster_algo, pkm_params) {
   set.seed(pkm_params$seed)
   cell_use <- sample(nrow(X), cell_sample)
@@ -309,6 +310,7 @@ find_classifier_dims_entropy <- function(X, cell_sample, k_sub, cluster_algo, pk
 #'   dim_reduction = "pca"
 #' )
 #' dims <- find_classifier_dims_maxmargin(X, 80, c(3, 6), "kmeans", pkm_params)
+#' @export
 find_classifier_dims_maxmargin <- function(X, cell_sample, k_sub, cluster_algo, pkm_params) {
   set.seed(pkm_params$seed)
   cell_use <- sample(nrow(X), cell_sample)
