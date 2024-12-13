@@ -69,16 +69,18 @@ L1-penalized SVM.
 \examples{
 # Generate example data
 set.seed(123)
-X <- matrix(rnorm(1000), ncol=20)
+X <- matrix(rnorm(1000), ncol = 20)
 
 # Basic usage
-result <- SMD(X, k_guess=3)
+result <- SMD(X, k_guess = 3)
 
 # With custom parameters
-result <- SMD(X, k_guess=3, 
-              prop_algo="kmeans",
-              divergence="kl",
-              dim_reduction="spectral")
+result <- SMD(X,
+  k_guess = 3,
+  prop_algo = "kmeans",
+  divergence = "kl",
+  dim_reduction = "spectral"
+)
 
 }
 \references{

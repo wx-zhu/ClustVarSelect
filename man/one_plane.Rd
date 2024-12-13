@@ -27,7 +27,8 @@ Uses penalizedSVM package to fit an L1-penalized SVM model and returns
 the feature corresponding to the largest absolute coefficient.
 }
 \examples{
-X <- matrix(rnorm(100), ncol=5)
-clusters <- sample(1:2, 20, replace=TRUE)
+X <- matrix(rnorm(100), ncol = 5)
+clusters <- sample(1:2, 20, replace = TRUE)
 feature <- one_plane(X, clusters, 1, 2)
 }
+\keyword{internal}

@@ -26,9 +26,12 @@ Identifies important dimensions in data using SVM-based maximum margin classific
 with power k-means clustering.
 }
 \examples{
-X <- matrix(rnorm(1000), ncol=20)
-pkm_params <- list(eta=1.05, initial_centers=NULL, divergence="euclidean",
-                   convergence_threshold=5, seed=1, max_iter=1000, 
-                   dim_reduction="pca")
-dims <- find_classifier_dims_maxmargin(X, 80, c(3,6), "kmeans", pkm_params)
+X <- matrix(rnorm(1000), ncol = 20)
+pkm_params <- list(
+  eta = 1.05, initial_centers = NULL, divergence = "euclidean",
+  convergence_threshold = 5, seed = 1, max_iter = 1000,
+  dim_reduction = "pca"
+)
+dims <- find_classifier_dims_maxmargin(X, 80, c(3, 6), "kmeans", pkm_params)
 }
+\keyword{internal}
