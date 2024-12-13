@@ -45,7 +45,7 @@
 #' @examples
 #' set.seed(123)
 #' X <- matrix(rnorm(1000), ncol=10)
-#' result <- power_kmeans_bregman(X, s=2.0, k=3)
+#' result <- power_kmeans_bregman(X, s= -0.5, k=3)
 #'
 #' @export
 power_kmeans_bregman <- function(

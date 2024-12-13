@@ -23,7 +23,7 @@ power_kmeans_bregman(
 \arguments{
 \item{X}{Input data: matrix, sparse matrix (dgCMatrix), SingleCellExperiment, or Seurat object}
 
-\item{s}{Initial power parameter for weights calculation}
+\item{s}{Initial power parameter for weights calculation. Must be negative (e.g., -0.5)}
 
 \item{k}{Number of clusters}
 
@@ -69,7 +69,7 @@ is updated during optimization to improve clustering robustness.
 \examples{
 set.seed(123)
 X <- matrix(rnorm(1000), ncol=10)
-result <- power_kmeans_bregman(X, s=2.0, k=3)
+result <- power_kmeans_bregman(X, s= -0.5, k=3)
 
 }
 \references{
