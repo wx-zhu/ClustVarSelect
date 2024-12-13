@@ -29,4 +29,3 @@ X <- matrix(rnorm(20), ncol = 2)
 X_shuffled <- shuffle_data(X)
 
 }
-\keyword{internal}

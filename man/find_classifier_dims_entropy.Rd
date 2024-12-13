@@ -32,6 +32,5 @@ pkm_params <- list(
   convergence_threshold = 5, seed = 1, max_iter = 1000,
   dim_reduction = "pca"
 )
-dims <- find_classifier_dims_entropy(X, 80, c(3, 6), "kmeans", pkm_params)
+dims <- find_classifier_dims_entropy(X, 30, c(3, 6), "kmeans", pkm_params)
 }
-\keyword{internal}

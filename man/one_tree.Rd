@@ -31,4 +31,3 @@ X <- matrix(rnorm(100), ncol = 5)
 clusters <- sample(1:2, 20, replace = TRUE)
 feature <- one_tree(X, clusters, 1, 2)
 }
-\keyword{internal}
