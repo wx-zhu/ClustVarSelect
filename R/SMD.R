@@ -1,9 +1,9 @@
 #' Sparse Manifold Decomposition (SMD) with Power K-means
 #'
 #' @description
-#' Performs sparse manifold decomposition using power k-means clustering with Bregman 
-#' divergence for robust feature importance analysis in high-dimensional data, especially 
-#' for scRNA-seq data. Features are normalized before analysis and importance scores can 
+#' Performs sparse manifold decomposition using power k-means clustering with Bregman
+#' divergence for robust feature importance analysis in high-dimensional data, especially
+#' for scRNA-seq data. Features are normalized before analysis and importance scores can
 #' be standardized relative to shuffled data.
 #'
 #' @importFrom graphics hist
@@ -11,12 +11,12 @@
 #' @importFrom utils head
 #' @importFrom irlba irlba
 #' @importFrom matrixStats colMins colSds
-#' 
+#'
 #' @param X Numeric matrix with dimensions (number of data points) x (number of features)
 #' @param k_guess Integer specifying best estimate of number of clusters present
 #' @param trials Number of cluster proposals to average over in ensemble. Default: 2 * ncol(X)
 #' @param n_sub Number of data points used in each proposal clustering. Default: 0.8 * nrow(X)
-#' @param prop_algo Algorithm for constructing cluster proposals. Either "agglo" or "kmeans". If 'kmeans', uses power_kmeans_bregman. Default: "agglo" 
+#' @param prop_algo Algorithm for constructing cluster proposals. Either "agglo" or "kmeans". If 'kmeans', uses power_kmeans_bregman. Default: "agglo"
 #' @param class_algo Type of classifier used. Either "entropy" (decision trees) or "maxmargin" (L1-SVM). Default: "entropy"
 #' @param cluster_prior_min Minimum number of clusters for proposals. Default: 3
 #' @param z_score Logical indicating whether to return standardized scores. Default: TRUE
@@ -28,37 +28,39 @@
 #' @param max_iter Maximum number of iterations for power k-means. Default: 1000
 #' @param dim_reduction Dimension reduction method: "pca", "spectral", or "none". Default: "pca"
 #'
-#' 
+#'
 #' @details
 #' The function implements sparse manifold decomposition (SMD) combining power k-means clustering
-#' with Bregman divergence for robust clustering. This method is particularly effective for 
-#' discovering discriminating features in high-dimensional biological data. For entropy-based 
-#' classification, it uses decision trees (rpart). For maxmargin classification, it uses 
+#' with Bregman divergence for robust clustering. This method is particularly effective for
+#' discovering discriminating features in high-dimensional biological data. For entropy-based
+#' classification, it uses decision trees (rpart). For maxmargin classification, it uses
 #' L1-penalized SVM.
 #'
 #' @references
-#' Melton, S., & Ramanathan, S. (2021). Discovering a sparse set of pairwise 
-#' discriminating features in high-dimensional data. Bioinformatics (Oxford, England), 
+#' Melton, S., & Ramanathan, S. (2021). Discovering a sparse set of pairwise
+#' discriminating features in high-dimensional data. Bioinformatics (Oxford, England),
 #' 37(2), 202-212. https://doi.org/10.1093/bioinformatics/btaa690
 #'
-#' Vellal, A., Eldan, R., Zaslavsky, M., & Roeder, K. (2022). 
-#' Bregman Power k-Means for Clustering Exponential Family Data. 
+#' Vellal, A., Eldan, R., Zaslavsky, M., & Roeder, K. (2022).
+#' Bregman Power k-Means for Clustering Exponential Family Data.
 #' In International Conference on Machine Learning (pp. 22083-22101). PMLR.
 #' https://proceedings.mlr.press/v162/vellal22a/vellal22a.pdf
 #'
 #' @examples
 #' # Generate example data
 #' set.seed(123)
-#' X <- matrix(rnorm(1000), ncol=20)
+#' X <- matrix(rnorm(1000), ncol = 20)
 #'
 #' # Basic usage
-#' result <- SMD(X, k_guess=3)
+#' result <- SMD(X, k_guess = 3)
 #'
 #' # With custom parameters
-#' result <- SMD(X, k_guess=3, 
-#'               prop_algo="kmeans",
-#'               divergence="kl",
-#'               dim_reduction="spectral")
+#' result <- SMD(X,
+#'   k_guess = 3,
+#'   prop_algo = "kmeans",
+#'   divergence = "kl",
+#'   dim_reduction = "spectral"
+#' )
 #'
 #' @export
 SMD <- function(X,
@@ -69,18 +71,17 @@ SMD <- function(X,
                 class_algo = "entropy",
                 cluster_prior_min = NULL,
                 z_score = TRUE,
-                eta = 1.05,          # for power_kmeans_bergman, adjusted if needed
+                eta = 1.05, # for power_kmeans_bergman, adjusted if needed
                 initial_centers = NULL,
                 divergence = "euclidean",
                 convergence_threshold = 5,
                 seed = 1,
                 max_iter = 1000,
                 dim_reduction = "pca") {
-  
   # Get dimensions
   N <- nrow(X)
   D <- ncol(X)
-  
+
   # Input validation
   if (k_guess < 1) {
     stop("k_guess must be positive")
@@ -100,15 +101,15 @@ SMD <- function(X,
   if (!is.null(trials) && (!is.numeric(trials) || trials < 1 || is.na(trials))) {
     stop("'trials' must be NULL or a positive integer")
   }
-  
+
   # Set default parameters
   if (is.null(n_sub)) n_sub <- as.integer(N * 0.8)
   if (is.null(trials)) trials <- as.integer(2 * D)
   if (is.null(cluster_prior_min)) cluster_prior_min <- 3
-  
+
   # Normalize X
   X <- scale(X, center = FALSE, scale = apply(X, 2, sd))
-  
+
   # Validate algorithms
   if (!prop_algo %in% c("agglo", "kmeans")) {
     stop(paste(prop_algo, "is not a supported clustering algorithm."))
@@ -116,10 +117,10 @@ SMD <- function(X,
   if (!class_algo %in% c("entropy", "maxmargin")) {
     stop(paste(class_algo, "is not a supported classifier."))
   }
-  
+
   # Set cluster range
   cluster_prior <- c(cluster_prior_min, as.integer(2 * k_guess))
-  
+
   # Create power kmeans parameters list
   pkm_params <- list(
     eta = eta,
@@ -130,9 +131,9 @@ SMD <- function(X,
     max_iter = max_iter,
     dim_reduction = dim_reduction
   )
-  
+
   # Choose classifier function based on class_algo
-  classifier_func <- if(class_algo == "entropy") {
+  classifier_func <- if (class_algo == "entropy") {
     function(X, n_sub, cluster_prior, prop_algo) {
       find_classifier_dims_entropy(X, n_sub, cluster_prior, prop_algo, pkm_params)
     }
@@ -141,15 +142,15 @@ SMD <- function(X,
       find_classifier_dims_maxmargin(X, n_sub, cluster_prior, prop_algo, pkm_params)
     }
   }
-  
+
   # Collect counts
   counts <- unlist(lapply(1:trials, function(trial) {
     classifier_func(X, n_sub, cluster_prior, prop_algo)
   }))
-  
+
   # Calculate histogram of counts
   gd <- hist(counts, breaks = seq(0, D), plot = FALSE)$density
-  
+
   if (z_score) {
     X_shuffled <- shuffle_data(X)
     counts_shuffled <- unlist(lapply(1:trials, function(trial) {
@@ -160,7 +161,7 @@ SMD <- function(X,
   } else {
     scores <- gd
   }
-  
+
   # Create and return ClustVarSelect object
   create_clustvarselect(
     scores = scores,
@@ -220,7 +221,7 @@ shuffle_data <- function(X) {
 #' Find Important Dimensions Using Entropy-Based Classification
 #'
 #' @description
-#' Identifies important dimensions in data using entropy-based classification with 
+#' Identifies important dimensions in data using entropy-based classification with
 #' either power k-means or hierarchical clustering.
 #'
 #' @param X Numeric matrix of data points
@@ -236,45 +237,41 @@ shuffle_data <- function(X) {
 #' @importFrom rpart rpart rpart.control
 #'
 #' @examples
-#' X <- matrix(rnorm(1000), ncol=20)
-#' pkm_params <- list(eta=1.05, initial_centers=NULL, divergence="euclidean",
-#'                    convergence_threshold=5, seed=1, max_iter=1000, 
-#'                    dim_reduction="pca")
-#' dims <- find_classifier_dims_entropy(X, 80, c(3,6), "kmeans", pkm_params)
+#' X <- matrix(rnorm(1000), ncol = 20)
+#' pkm_params <- list(
+#'   eta = 1.05, initial_centers = NULL, divergence = "euclidean",
+#'   convergence_threshold = 5, seed = 1, max_iter = 1000,
+#'   dim_reduction = "pca"
+#' )
+#' dims <- find_classifier_dims_entropy(X, 80, c(3, 6), "kmeans", pkm_params)
 find_classifier_dims_entropy <- function(X, cell_sample, k_sub, cluster_algo, pkm_params) {
   set.seed(pkm_params$seed)
   cell_use <- sample(nrow(X), cell_sample)
   k_sub_i <- sample(k_sub[1]:k_sub[2], 1)
   Xit <- X[cell_use, ]
-  
-  k_guess <- if(cluster_algo == "kmeans") {
+
+  k_guess <- if (cluster_algo == "kmeans") {
     power_kmeans_bregman(
-      Xit, 
-      s = 2.0, 
-      k = k_sub_i,
-      eta = pkm_params$eta,
-      initial_centers = pkm_params$initial_centers,
-      divergence = pkm_params$divergence,
-      convergence_threshold = pkm_params$convergence_threshold,
-      seed = pkm_params$seed,
-      max_iter = pkm_params$max_iter,
-      dim_reduction = pkm_params$dim_reduction
+      Xit,
+      s = -0.5,
+      k = k_sub_i
     )$classes
   } else {
     cutree(hclust(dist(Xit), method = "ward.D2"), k = k_sub_i)
   }
-  
+  k_guess <- as.integer(factor(k_guess, labels = 1:length(unique(k_guess))))
+
   # Input Validation
   if (is.null(k_guess) || any(is.na(k_guess))) {
     stop("Invalid cluster assignments")
   }
-  if(length(unique(k_guess)) < 2) {
+  if (length(unique(k_guess)) < 2) {
     stop("Clustering produced less than 2 distinct clusters")
   }
-  
+
   gnout <- NULL
-  for(i in 2:max(k_guess)) {
-    for(j in 1:(i-1)) {
+  for (i in 2:max(k_guess)) {
+    for (j in 1:(i - 1)) {
       gnout <- c(gnout, one_tree(Xit, k_guess, i, j))
     }
   }
@@ -298,20 +295,22 @@ find_classifier_dims_entropy <- function(X, cell_sample, k_sub, cluster_algo, pk
 #' @return Vector of important feature indices
 #'
 #' @examples
-#' X <- matrix(rnorm(1000), ncol=20)
-#' pkm_params <- list(eta=1.05, initial_centers=NULL, divergence="euclidean",
-#'                    convergence_threshold=5, seed=1, max_iter=1000, 
-#'                    dim_reduction="pca")
-#' dims <- find_classifier_dims_maxmargin(X, 80, c(3,6), "kmeans", pkm_params)
+#' X <- matrix(rnorm(1000), ncol = 20)
+#' pkm_params <- list(
+#'   eta = 1.05, initial_centers = NULL, divergence = "euclidean",
+#'   convergence_threshold = 5, seed = 1, max_iter = 1000,
+#'   dim_reduction = "pca"
+#' )
+#' dims <- find_classifier_dims_maxmargin(X, 80, c(3, 6), "kmeans", pkm_params)
 find_classifier_dims_maxmargin <- function(X, cell_sample, k_sub, cluster_algo, pkm_params) {
   set.seed(pkm_params$seed)
-  cell_use <- sample(nrow(X), cell_sample)  
+  cell_use <- sample(nrow(X), cell_sample)
   k_sub_i <- sample(k_sub[1]:k_sub[2], 1)
   Xit <- X[cell_use, ]
-  
+
   k_guess <- power_kmeans_bregman(
-    Xit, 
-    s = 2.0, 
+    Xit,
+    s = -0.5,
     k = k_sub_i,
     eta = pkm_params$eta,
     initial_centers = pkm_params$initial_centers,
@@ -321,18 +320,18 @@ find_classifier_dims_maxmargin <- function(X, cell_sample, k_sub, cluster_algo, 
     max_iter = pkm_params$max_iter,
     dim_reduction = pkm_params$dim_reduction
   )$classes
-  
+
   # Input Validation
   if (is.null(k_guess) || any(is.na(k_guess))) {
     stop("Invalid cluster assignments")
   }
-  if(length(unique(k_guess)) < 2) {
+  if (length(unique(k_guess)) < 2) {
     stop("Clustering produced less than 2 distinct clusters")
   }
-  
+
   gnout <- NULL
-  for(i in 2:max(k_guess)) {
-    for(j in 1:(i-1)) {
+  for (i in 2:max(k_guess)) {
+    for (j in 1:(i - 1)) {
       gnout <- c(gnout, one_plane(Xit, k_guess, i, j))
     }
   }
@@ -345,7 +344,7 @@ find_classifier_dims_maxmargin <- function(X, cell_sample, k_sub, cluster_algo, 
 #' Identify Important Feature Using Decision Tree
 #'
 #' @description
-#' Finds the most important feature distinguishing between two clusters using a 
+#' Finds the most important feature distinguishing between two clusters using a
 #' single-level decision tree.
 #'
 #' @param Xit Numeric matrix of data points
@@ -362,22 +361,22 @@ find_classifier_dims_maxmargin <- function(X, cell_sample, k_sub, cluster_algo, 
 #' @importFrom rpart rpart rpart.control
 #'
 #' @examples
-#' X <- matrix(rnorm(100), ncol=5)
-#' clusters <- sample(1:2, 20, replace=TRUE)
+#' X <- matrix(rnorm(100), ncol = 5)
+#' clusters <- sample(1:2, 20, replace = TRUE)
 #' feature <- one_tree(X, clusters, 1, 2)
-one_tree <- function(Xit, k_guess, ik1, ik2) {  
+one_tree <- function(Xit, k_guess, ik1, ik2) {
   # Subset data for the two clusters
   mask <- k_guess == ik1 | k_guess == ik2
   XTT <- Xit[mask, ]
   KTT <- k_guess[mask]
-  
+
   # Train decision tree
   tree <- rpart(KTT ~ .,
-                data = as.data.frame(XTT),
-                method = "class",
-                control = rpart.control(maxdepth = 1)
+    data = as.data.frame(XTT),
+    method = "class",
+    control = rpart.control(maxdepth = 1)
   )
-  
+
   # Get feature importance
   importance <- tree$variable.importance
   if (length(importance) > 0) {
@@ -410,10 +409,10 @@ one_tree <- function(Xit, k_guess, ik1, ik2) {
 #' @importFrom penalizedSVM svmfs
 #'
 #' @examples
-#' X <- matrix(rnorm(100), ncol=5)
-#' clusters <- sample(1:2, 20, replace=TRUE)
+#' X <- matrix(rnorm(100), ncol = 5)
+#' clusters <- sample(1:2, 20, replace = TRUE)
 #' feature <- one_plane(X, clusters, 1, 2)
-one_plane <- function(Xit, k_guess, ik1, ik2) { 
+one_plane <- function(Xit, k_guess, ik1, ik2) {
   # Subset data for the two clusters
   XTT <- Xit
   KTT <- factor(k_guess, labels = c(-1, 1))
@@ -430,8 +429,7 @@ one_plane <- function(Xit, k_guess, ik1, ik2) {
     parms.coding = "none",
     verbose = FALSE
   )
-  
+
   # Get coefficients
   return(as.integer(names(which.max(abs(model$model$w)))))
 }
-
