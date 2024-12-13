@@ -244,7 +244,7 @@ shuffle_data <- function(X) {
 #'   dim_reduction = "pca"
 #' )
 #' dims <- find_classifier_dims_entropy(X, 80, c(3, 6), "kmeans", pkm_params)
-#' @export
+#' @keywords internal
 find_classifier_dims_entropy <- function(X, cell_sample, k_sub, cluster_algo, pkm_params) {
   set.seed(pkm_params$seed)
   cell_use <- sample(nrow(X), cell_sample)
@@ -310,7 +310,7 @@ find_classifier_dims_entropy <- function(X, cell_sample, k_sub, cluster_algo, pk
 #'   dim_reduction = "pca"
 #' )
 #' dims <- find_classifier_dims_maxmargin(X, 80, c(3, 6), "kmeans", pkm_params)
-#' @export
+#' @keywords internal
 find_classifier_dims_maxmargin <- function(X, cell_sample, k_sub, cluster_algo, pkm_params) {
   set.seed(pkm_params$seed)
   cell_use <- sample(nrow(X), cell_sample)
@@ -374,6 +374,7 @@ find_classifier_dims_maxmargin <- function(X, cell_sample, k_sub, cluster_algo, 
 #' X <- matrix(rnorm(100), ncol = 5)
 #' clusters <- sample(1:2, 20, replace = TRUE)
 #' feature <- one_tree(X, clusters, 1, 2)
+#' @keywords internal
 one_tree <- function(Xit, k_guess, ik1, ik2) {
   # Subset data for the two clusters
   mask <- k_guess == ik1 | k_guess == ik2
@@ -422,6 +423,7 @@ one_tree <- function(Xit, k_guess, ik1, ik2) {
 #' X <- matrix(rnorm(100), ncol = 5)
 #' clusters <- sample(1:2, 20, replace = TRUE)
 #' feature <- one_plane(X, clusters, 1, 2)
+#' @keywords internal
 one_plane <- function(Xit, k_guess, ik1, ik2) {
   # Subset data for the two clusters
   mask <- k_guess == ik1 | k_guess == ik2
