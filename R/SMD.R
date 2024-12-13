@@ -254,7 +254,14 @@ find_classifier_dims_entropy <- function(X, cell_sample, k_sub, cluster_algo, pk
     power_kmeans_bregman(
       Xit,
       s = -0.5,
-      k = k_sub_i
+      k = k_sub_i,
+      eta = pkm_params$eta,
+      initial_centers = pkm_params$initial_centers,
+      divergence = pkm_params$divergence,
+      convergence_threshold = pkm_params$convergence_threshold,
+      seed = pkm_params$seed,
+      max_iter = pkm_params$max_iter,
+      dim_reduction = pkm_params$dim_reduction
     )$classes
   } else {
     cutree(hclust(dist(Xit), method = "ward.D2"), k = k_sub_i)
@@ -320,6 +327,7 @@ find_classifier_dims_maxmargin <- function(X, cell_sample, k_sub, cluster_algo, 
     max_iter = pkm_params$max_iter,
     dim_reduction = pkm_params$dim_reduction
   )$classes
+  k_guess <- as.integer(factor(k_guess, labels = 1:length(unique(k_guess))))
 
   # Input Validation
   if (is.null(k_guess) || any(is.na(k_guess))) {
@@ -414,8 +422,9 @@ one_tree <- function(Xit, k_guess, ik1, ik2) {
 #' feature <- one_plane(X, clusters, 1, 2)
 one_plane <- function(Xit, k_guess, ik1, ik2) {
   # Subset data for the two clusters
-  XTT <- Xit
-  KTT <- factor(k_guess, labels = c(-1, 1))
+  mask <- k_guess == ik1 | k_guess == ik2
+  XTT <- Xit[mask, ]
+  KTT <- factor(k_guess[mask], labels = c(-1, 1))
   colnames(XTT) <- 1:ncol(XTT)
   # Use penalizedSVM package to impose L1 penalty
   model <- penalizedSVM::svmfs(
