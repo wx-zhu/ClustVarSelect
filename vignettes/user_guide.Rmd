@@ -1,0 +1,234 @@
+---
+title: "ClustVarSelect Package User Guide"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    toc: true
+    toc_depth: 3
+    toc_float: true
+vignette: >
+  %\\VignetteIndexEntry{ClustVarSelect Package User Guide}
+  %\\VignetteEngine{knitr::rmarkdown}
+  %\\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  warning = FALSE,
+  message = FALSE
+)
+```
+
+# Introduction
+
+ClustVarSelect is a comprehensive R package for feature selection in high-dimensional data, with a particular focus on single-cell RNA sequencing (scRNA-seq) data analysis. The package implements sparse manifold decomposition (SMD) with power k-means clustering, offering robust and efficient methods for identifying important features in complex biological datasets.
+
+## Key Features
+
+The package offers several distinctive capabilities:
+
+- Multiple Bregman divergences for flexible distance metrics
+
+- Support for both entropy-based (decision trees) and maximum margin (SVM) classification
+
+- Various dimension reduction methods including PCA and spectral clustering
+
+- Efficient parallel processing for large-scale analyses
+
+- Compatible with multiple input formats including sparse matrices, SingleCellExperiment, and Seurat objects
+
+# Installation
+
+You can install ClustVarSelect from GitHub using the devtools package:
+
+```{r eval=FALSE}
+# Install devtools if you haven\'t already
+install.packages("devtools")
+
+# Install ClustVarSelect
+devtools::install_github("wx-zhu/ClustVarSelect")
+```
+
+# Getting Started
+
+First, load the package:
+
+```{r eval=FALSE}
+library(ClustVarSelect)
+```
+
+## Basic Usage
+
+Here\'s a simple example using simulated data:
+
+```{r eval=FALSE}
+# Generate example data
+set.seed(123)
+X <- matrix(rnorm(1000), ncol = 20)
+
+# Run feature selection with default parameters
+result <- SMD(X, k_guess = 3)
+
+# View results
+print(result)
+summary(result)
+```
+
+# Core Functions
+
+## SMD (Sparse Manifold Decomposition)
+
+The main function `SMD()` performs feature selection using power k-means clustering with Bregman divergence. Here\'s a detailed example with custom parameters:
+
+```{r eval=FALSE}
+result <- SMD(
+  X = your_data_matrix,
+  k_guess = 3,                    # Expected number of clusters
+  trials = 40,                    # Number of cluster proposals
+  n_sub = 100,                    # Number of samples per proposal
+  prop_algo = "kmeans",           # Clustering algorithm
+  class_algo = "entropy",         # Classification algorithm
+  z_score = TRUE,                 # Standardize scores
+  divergence = "euclidean",       # Type of Bregman divergence
+  dim_reduction = "pca",          # Dimension reduction method
+  n_cores = 2                     # Number of CPU cores for parallel processing
+)
+```
+
+### Parameters
+
+- `X`: Input data matrix (samples × features). Other input types (e.g., sparse matrices or Seurat objects) need be preprocessed into a matrix.
+- `k_guess`: Expected number of clusters in the data
+- `trials`: Number of clustering proposals (default: 2 × number of features)
+- `n_sub`: Number of samples used in each proposal (default: 80% of total samples)
+- `prop_algo`: Clustering algorithm ("kmeans" or "agglo")
+- `class_algo`: Classification method ("entropy" or "maxmargin")
+- `z_score`: Whether to standardize importance scores
+- `divergence`: Type of Bregman divergence ("euclidean", "kl", "itakura-saito", or "logistic")
+- `dim_reduction`: Dimension reduction method ("pca", "spectral", or "none")
+- `n_cores`: Number of CPU cores for parallel processing
+
+## Power K-means with Bregman Divergence
+
+The package includes a standalone implementation of power k-means clustering with Bregman divergence:
+
+```{r eval=FALSE}
+cluster_result <- power_kmeans_bregman(
+  X = your_data_matrix,
+  s = -0.5,                     # Initial power parameter
+  k = 3,                        # Number of clusters
+  npcs = 50,                    # Number of principal components
+  eta = 1.05,                   # Learning rate
+  divergence = "euclidean",     # Type of Bregman divergence
+  dim_reduction = "pca"         # Dimension reduction method
+)
+```
+
+# Working with Different Input Types
+
+ClustVarSelect supports :
+
+## Dense Matrix
+
+```{r eval=FALSE}
+# Standard R matrix
+X <- matrix(rnorm(1000), ncol = 20)
+result <- SMD(X, k_guess = 3)
+```
+
+## Sparse Matrix
+
+```{r eval=FALSE}
+# Sparse matrix from Matrix package
+library(Matrix)
+X_sparse <- Matrix(rnorm(1000), ncol = 20, sparse = TRUE)
+X_dense <- as.matrix(X_sparse)
+result <- SMD(X_dense, k_guess = 3)
+```
+
+## Seurat Object
+
+```{r eval=FALSE}
+library(Seurat)
+data("pbmc_small")
+
+# Convert Seurat object data to matrix
+X <- as.matrix(pbmc_small@assays$RNA@data)
+result <- SMD(X, k_guess = 3)
+```
+
+
+# Interpreting Results
+
+The SMD function returns a ClustVarSelect object with the following components:
+
+- `scores`: Vector of feature importance scores
+- `k_guess`: Number of clusters used
+- `prop_algo`: Clustering algorithm used
+- `class_algo`: Classification algorithm used
+- `params`: List of parameters used
+
+## Visualizing Results
+
+```{r eval=FALSE}
+# Basic printing
+print(result)
+
+# Detailed summary
+summary(result)
+
+# Plot feature importance scores
+scores <- result$scores
+plot(scores, type = "h",
+     xlab = "Feature Index",
+     ylab = "Importance Score",
+     main = "Feature Importance Scores")
+```
+
+
+# Performance Considerations
+
+## Parallel Processing
+
+The package supports parallel processing on Unix-like systems (Linux, macOS):
+
+```{r eval=FALSE}
+# Use multiple cores for faster processing
+result <- SMD(X, k_guess = 3, n_cores = 4)
+```
+
+## Memory Usage
+
+For large datasets, consider these tips:
+
+- Use sparse matrix formats when appropriate
+- Adjust `n_sub` to control memory usage
+- Use dimension reduction with `npcs` parameter
+- Monitor memory usage and adjust parameters accordingly
+
+# Best Practices
+
+1. Data Preparation:
+   - Scale your data appropriately
+   - Remove features with zero variance
+   - Consider preliminary dimension reduction for very large datasets
+
+2. Parameter Selection:
+   - Choose `k_guess` based on prior knowledge or clustering analysis
+   - Adjust `trials` based on dataset size and computational resources
+   - Select appropriate `divergence` type based on your data characteristics
+
+3. Validation:
+   - Use multiple runs with different random seeds
+   - Compare results across different parameter settings
+   - Validate selected features using domain knowledge
+
+# References
+
+1. Melton, S., & Ramanathan, S. (2021). Discovering a sparse set of pairwise discriminating features in high-dimensional data. Bioinformatics, 37(2), 202-212.
+
+2. Vellal, A., Eldan, R., Zaslavsky, M., & Roeder, K. (2022). Bregman Power k-Means for Clustering Exponential Family Data. ICML, 22083-22101.
+
+

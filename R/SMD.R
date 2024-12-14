@@ -3,10 +3,11 @@
 #' @description
 #' Performs sparse manifold decomposition using power k-means clustering with Bregman
 #' divergence for robust feature importance analysis in high-dimensional data, especially
-#' for scRNA-seq data. Features are normalized before analysis and importance scores can
-#' be standardized relative to shuffled data. The function implements efficient parallel 
-#' processing to accelerate computation across multiple CPU cores, making it suitable for 
-#' large-scale analyses.
+#' for scRNA-seq data. Current SMD function primarily supports numeric matrices and may require 
+#' preprocessing for other data types like Seurat or SingleCellExperiment objects. Features are 
+#' normalized before analysis and importance scores can be standardized relative to shuffled data. 
+#' The function implements efficient parallel processing to accelerate computation across multiple 
+#' CPU cores, making it suitable for large-scale analyses.
 #' 
 #' @importFrom parallel mclapply detectCores
 #' @importFrom stats median predict quantile rnorm sd as.formula dist hclust cutree
